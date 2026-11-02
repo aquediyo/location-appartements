@@ -9,6 +9,8 @@ Application web de gestion locative pour deux profils :
 
 Interface **bilingue français / arabe** (avec affichage droite-à-gauche), responsive (ordinateur, tablette, téléphone), données partagées en ligne via **Supabase**.
 
+**Application en ligne :** https://aquediyo.github.io/location-appartements/
+
 ---
 
 ## 1. Base de données (déjà configurée)
@@ -29,13 +31,15 @@ Double-cliquez sur **`Lancer l'application.cmd`** : un petit serveur local déma
 
 > Une connexion Internet est nécessaire (les données sont dans Supabase). Il est aussi possible d'ouvrir directement `index.html`, mais le lanceur évite les restrictions des navigateurs sur les fichiers locaux.
 
-## 3. Mettre l'application en ligne
+## 3. Mise en ligne (déjà effectuée)
 
-Le site est 100 % statique (HTML/CSS/JS) : il suffit de déposer le dossier sur un hébergeur.
+L'application est publiée sur **GitHub Pages** :
 
-- **GitHub Pages** (recommandé, gratuit et permanent) : dépôt public + activation de Pages.
-- **Netlify Drop** : https://app.netlify.com/drop → glissez-déposez le dossier.
-- **Vercel**, **Cloudflare Pages** : import du dossier.
+**https://aquediyo.github.io/location-appartements/**
+
+Elle est accessible depuis n'importe quel appareil, sans que l'ordinateur reste allumé. Pour mettre à jour le site après une modification, il suffit d'envoyer les fichiers modifiés dans le dépôt GitHub `aquediyo/location-appartements` (branche `main`).
+
+Autres hébergeurs possibles : **Netlify Drop**, **Vercel**, **Cloudflare Pages** (glisser-déposer le dossier).
 
 ⚠️ Supabase Storage / Edge Functions ne peuvent **pas** servir cette application : leur domaine partagé force `text/plain` + CSP, le navigateur affiche le code source au lieu de la page.
 
