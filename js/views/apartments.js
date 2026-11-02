@@ -66,7 +66,7 @@
               (a.description ? '<div class="cell-sub">' + App.esc(a.description) + "</div>" : "") + "</td>" +
             '<td class="small">' + App.esc([a.address, a.city].filter(Boolean).join(", ") || "—") + "</td>" +
             '<td class="num">' + (a.rooms ? App.num(a.rooms) : "—") + "</td>" +
-            '<td class="num nowrap">' + App.esc(App.money(a.rent_amount)) + (a.daily_rate ? '<div class="cell-sub">' + App.esc(App.money(a.daily_rate) + " / " + t("common.nightsShort")) + "</div>" : "") + "</td>" +
+            '<td class="num nowrap">' + App.esc(App.money(a.rent_amount)) + (a.daily_rate ? '<div class="cell-sub">' + App.esc(App.money(a.daily_rate) + " / " + t("common.perNight")) + "</div>" : "") + "</td>" +
             "<td>" + App.badge(a.status) + "</td>" +
             '<td class="small">' + (a.status === "occupied" ? App.esc(tenantByApt[a.id] || "—") : '<span class="muted">' + App.esc(t("apartments.vacant")) + "</span>") + "</td>" +
             (isAdmin ? '<td class="actions">' +
