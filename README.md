@@ -68,22 +68,25 @@ Le site est 100 % statique : envoyez le dossier complet sur un hébergeur gratui
 ## Utilisation quotidienne
 
 ### Appartements (admin)
-- **Appartements → Ajouter** : nom, adresse, ville, pièces, loyer mensuel, statut, description.
+- **Appartements → Ajouter** : nom, adresse, ville, pièces, **loyer mensuel**, **prix par nuitée** (optionnel), statut, description.
 - Le statut **Occupé / Disponible** est mis à jour automatiquement quand une location commence ou se termine.
 - Un appartement lié à une location ou une réservation ne peut pas être supprimé (protection de l'historique).
 
 ### Réservations
-- **Réservations → Nouvelle réservation** : appartement, client, dates, acompte, montant.
+- **Réservations → Nouvelle réservation** : type de séjour (**mensuel** ou **à la nuitée**), appartement, client, dates, acompte, montant.
+- En mode **à la nuitée**, le nombre de nuits et le montant sont calculés automatiquement à partir des dates et du prix par nuitée de l'appartement.
 - Boutons : ✅ confirmer, ✖ annuler, 🔑 **convertir en location**.
-- À la conversion, l'acompte est **automatiquement enregistré comme premier paiement** dans la caisse.
+- À la conversion, le type de séjour, les dates et l'acompte sont conservés (l'acompte devient le **premier paiement** dans la caisse).
 
 ### Locations
-- **Locations → Nouvelle location** : appartement, client, dates, durée, loyer, total.
+- **Locations → Nouvelle location** : type de location (**mensuelle** ou **à la nuitée**), appartement, client, dates, durée, prix, total.
+- En mode **à la nuitée** : le nombre de nuits est calculé automatiquement (`date de fin − date de début`, minimum 1 nuit) et le total = **nuits × prix par nuitée**.
+- En mode **mensuel** : durée en mois et total = **mois × loyer mensuel**.
 - Un appartement ne peut avoir **qu'une seule location active** à la fois (contrôle en base).
 - Cliquez sur **Détails** pour :
-  - voir le total, le payé, le reste, la progression ;
+  - voir le type de location, le total, le payé, le reste, la progression ;
   - ajouter des **paiements partiels** ;
-  - **imprimer un reçu** ;
+  - **imprimer un reçu** (le type de séjour et la durée y figurent) ;
   - modifier la location ou un paiement ;
   - **enregistrer la sortie** du locataire (l'appartement redevient disponible).
 
