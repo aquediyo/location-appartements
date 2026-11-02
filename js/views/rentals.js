@@ -158,7 +158,7 @@
                 '<option value="">' + App.esc(t("common.select")) + "</option>" +
                 apartments.map(function (a) {
                   const price = App.money(a.rent_amount) + " / " + t("common.monthsShort") +
-                    (a.daily_rate ? " · " + App.money(a.daily_rate) + " / " + t("common.nightsShort") : "");
+                    (a.daily_rate ? " · " + App.money(a.daily_rate) + " / " + t("common.perNight") : "");
                   return App.option(a.id, a.name + " — " + price + (occupied[a.id] && a.id !== preset.apartment_id ? " (" + t("status.occupied") + ")" : ""), preset.apartment_id === a.id);
                 }).join("") +
               "</select></div>" +
