@@ -28,7 +28,8 @@
       lang: storedLang || cfg.defaultLang || "fr",
       profile: null,
       settings: null,
-      paymentsCache: null
+      paymentsCache: null,
+      hasDailySchema: false
     },
     routes: [
       { id: "dashboard", icon: "dashboard" },
@@ -111,6 +112,18 @@
     return !!(App.state.profile && App.state.profile.role === "admin");
   };
 
+  /* Détecte si la base possède déjà les colonnes de la location à la nuitée.
+     Permet à l'application de rester fonctionnelle avant la migration. */
+  App.detectDailySchema = async function () {
+    try {
+      await App.q(App.sb.from("apartments").select("daily_rate").limit(1));
+      App.state.hasDailySchema = true;
+    } catch (err) {
+      App.state.hasDailySchema = false;
+    }
+    return App.state.hasDailySchema;
+  };
+
   App.today = function () {
     const d = new Date();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -144,6 +157,28 @@
     const days = App.daysBetween(start, end);
     if (days <= 0) return 1;
     return Math.max(0.5, Math.round((days / 30.44) * 2) / 2);
+  };
+
+  /* Nombre de nuits entre deux dates (minimum 1). */
+  App.calcNights = function (start, end) {
+    const days = App.daysBetween(start, end);
+    return Math.max(1, days || 1);
+  };
+
+  /* Recalcule la quantité (mois ou nuits) selon le type de location. */
+  App.calcQuantity = function (periodType, start, end) {
+    return periodType === "daily" ? App.calcNights(start, end) : App.calcMonths(start, end);
+  };
+
+  /* Clés de traduction associées au type de location. */
+  App.periodLabels = function (periodType) {
+    const daily = periodType === "daily";
+    return {
+      quantity: daily ? "rentals.nights" : "rentals.months",
+      quantityHint: daily ? "rentals.nightsHint" : "rentals.monthsHint",
+      rent: daily ? "rentals.rentDaily" : "rentals.rentMonthly",
+      unitShort: daily ? "common.nightsShort" : "common.monthsShort"
+    };
   };
 
   App.num = function (n, decimals) {
