@@ -61,7 +61,8 @@
           const canConvert = r.status === "pending" || r.status === "confirmed";
           return "<tr>" +
             '<td class="small nowrap">' + App.date(r.start_date) +
-              (r.end_date ? '<div class="cell-sub">' + App.date(r.end_date) + "</div>" : "") + "</td>" +
+              (r.end_date ? '<div class="cell-sub">' + App.date(r.end_date) + "</div>" : "") +
+              '<div class="cell-sub">' + App.num(r.months || 0) + " " + App.esc(t(App.periodLabels(r.period_type).unitShort)) + "</div></td>" +
             '<td><div class="cell-main">' + App.esc(r.apartments ? r.apartments.name : "—") + "</div></td>" +
             '<td><div class="cell-main">' + App.esc(r.clients ? r.clients.full_name : "—") + "</div>" +
               '<div class="cell-sub">' + App.esc((r.clients && r.clients.phone) || "—") + "</div></td>" +
@@ -111,6 +112,7 @@
         preset: {
           apartment_id: r.apartment_id,
           client_id: r.client_id,
+          period_type: r.period_type || "monthly",
           start_date: r.start_date,
           end_date: r.end_date,
           months: r.months || undefined,
@@ -160,17 +162,31 @@
       return;
     }
 
+    const periodType = App.state.hasDailySchema && isEdit && r.period_type === "daily" ? "daily" : "monthly";
+    const labels = App.periodLabels(periodType);
+    const periodField = App.state.hasDailySchema
+      ? '<div class="field"><label>' + App.esc(t("rentals.periodType")) + "</label>" +
+          '<select name="period_type">' +
+            App.option("monthly", t("rentals.periodMonthly"), periodType === "monthly") +
+            App.option("daily", t("rentals.periodDaily"), periodType === "daily") +
+          "</select></div>"
+      : "";
     const start = isEdit ? r.start_date : App.today();
-    const end = isEdit ? (r.end_date || "") : App.addMonths(start, 1);
+    const end = isEdit ? (r.end_date || "") : (periodType === "daily" ? App.addDays(start, 1) : App.addMonths(start, 1));
 
     const m = App.openModal({
       title: isEdit ? t("reservations.edit") : t("reservations.add"),
       size: "wide",
       body:
         '<form id="res-form"><div class="form-grid">' +
+          periodField +
           '<div class="field"><label>' + App.esc(t("reservations.apartment")) + " *</label>" +
             '<select name="apartment_id" required><option value="">' + App.esc(t("common.select")) + "</option>" +
-              apartments.map(function (a) { return App.option(a.id, a.name + " — " + App.money(a.rent_amount), isEdit && r.apartment_id === a.id); }).join("") +
+              apartments.map(function (a) {
+                const price = App.money(a.rent_amount) + " / " + t("common.monthsShort") +
+                  (a.daily_rate ? " · " + App.money(a.daily_rate) + " / " + t("common.nightsShort") : "");
+                return App.option(a.id, a.name + " — " + price, isEdit && r.apartment_id === a.id);
+              }).join("") +
             "</select></div>" +
           '<div class="field"><label>' + App.esc(t("reservations.client")) + " *</label>" +
             '<select name="client_id" required><option value="">' + App.esc(t("common.select")) + "</option>" +
@@ -187,8 +203,8 @@
             '<input name="start_date" type="date" required value="' + App.esc(start) + '"></div>' +
           '<div class="field"><label>' + App.esc(t("reservations.endDate")) + "</label>" +
             '<input name="end_date" type="date" value="' + App.esc(end) + '"></div>' +
-          '<div class="field"><label>' + App.esc(t("rentals.months")) + "</label>" +
-            '<input name="months" type="number" min="0.5" step="0.5" value="' + App.esc(isEdit ? (r.months || App.calcMonths(start, end)) : App.calcMonths(start, end)) + '"></div>' +
+          '<div class="field"><label id="res-qty-label">' + App.esc(t(labels.quantity)) + "</label>" +
+            '<input name="months" id="res-qty" type="number" min="' + (periodType === "daily" ? 1 : 0.5) + '" step="' + (periodType === "daily" ? 1 : 0.5) + '" value="' + App.esc(isEdit ? (r.months || App.calcQuantity(periodType, start, end)) : App.calcQuantity(periodType, start, end)) + '"></div>' +
           '<div class="field"><label>' + App.esc(t("rentals.totalAmount")) + "</label>" +
             '<input name="total_amount" type="number" min="0" step="0.01" value="' + App.esc(isEdit ? r.total_amount : "") + '"></div>' +
           '<div class="field"><label>' + App.esc(t("reservations.deposit")) + "</label>" +
@@ -205,28 +221,45 @@
 
     const form = m.root.querySelector("#res-form");
     const err = m.root.querySelector("#res-err");
+    const fPeriod = form.elements.period_type;
     const fApt = form.elements.apartment_id;
     const fStart = form.elements.start_date;
     const fEnd = form.elements.end_date;
     const fMonths = form.elements.months;
     const fTotal = form.elements.total_amount;
 
-    function recompute(source) {
-      if (source === "total") return;
-      const a = apartments.find(function (x) { return x.id === fApt.value; });
-      if (fEnd.value && fStart.value) fMonths.value = App.calcMonths(fStart.value, fEnd.value);
-      const months = Number(fMonths.value || 0);
-      if (a) fTotal.value = Math.round(months * Number(a.rent_amount) * 100) / 100;
+    function rateFor(a, pt) {
+      if (!a) return 0;
+      return Number(pt === "daily" ? (a.daily_rate || 0) : (a.rent_amount || 0));
     }
 
-    function setDepositHint() { /* conserved for clarity */ }
+    function currentPeriod() {
+      return App.state.hasDailySchema && fPeriod ? fPeriod.value : "monthly";
+    }
 
+    function applyPeriodLabels() {
+      const pt = currentPeriod();
+      const l = App.periodLabels(pt);
+      form.querySelector("#res-qty-label").textContent = t(l.quantity);
+      fMonths.min = pt === "daily" ? "1" : "0.5";
+      fMonths.step = pt === "daily" ? "1" : "0.5";
+    }
+
+    function recompute(source) {
+      if (source === "total") return;
+      const pt = currentPeriod();
+      const a = apartments.find(function (x) { return x.id === fApt.value; });
+      if (fEnd.value && fStart.value) fMonths.value = App.calcQuantity(pt, fStart.value, fEnd.value);
+      const qty = Number(fMonths.value || 0);
+      if (a) fTotal.value = Math.round(qty * rateFor(a, pt) * 100) / 100;
+    }
+
+    if (fPeriod) fPeriod.addEventListener("change", function () { applyPeriodLabels(); recompute(); });
     fApt.addEventListener("change", function () { recompute(); });
     fStart.addEventListener("change", function () { recompute(); });
     fEnd.addEventListener("change", function () { recompute(); });
     fMonths.addEventListener("input", function () { recompute(); });
     if (!isEdit) recompute();
-    void setDepositHint;
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -243,7 +276,13 @@
         status: form.elements.status.value,
         notes: String(form.elements.notes.value || "").trim() || null
       };
+      if (App.state.hasDailySchema) payload.period_type = currentPeriod();
       if (!payload.apartment_id || !payload.client_id || !payload.start_date) {
+        err.textContent = t("errors.missingFields");
+        err.classList.remove("hidden");
+        return;
+      }
+      if (payload.period_type === "daily" && !payload.end_date) {
         err.textContent = t("errors.missingFields");
         err.classList.remove("hidden");
         return;
