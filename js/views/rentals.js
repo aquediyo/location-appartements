@@ -73,7 +73,7 @@
           const rest = Math.max(0, Number(r.total_amount) - p);
           return "<tr>" +
             '<td><div class="cell-main">' + App.esc(r.apartments ? r.apartments.name : "—") + "</div>" +
-              '<div class="cell-sub">' + App.num(r.months) + " " + App.esc(t("common.monthsShort")) + "</div></td>" +
+              '<div class="cell-sub">' + App.num(r.months) + " " + App.esc(t(App.periodLabels(r.period_type).unitShort)) + "</div></td>" +
             '<td><div class="cell-main">' + App.esc(r.clients ? r.clients.full_name : "—") + "</div>" +
               '<div class="cell-sub">' + App.esc((r.clients && r.clients.phone) || "—") + "</div></td>" +
             '<td class="small nowrap">' + App.date(r.start_date) + " → " + App.date(r.end_date) + "</td>" +
@@ -106,6 +106,7 @@
     const preset = editing ? {
       apartment_id: editing.apartment_id,
       client_id: editing.client_id,
+      period_type: editing.period_type || "monthly",
       start_date: editing.start_date,
       end_date: editing.end_date,
       months: editing.months,
@@ -132,8 +133,17 @@
       return;
     }
 
+    const periodType = App.state.hasDailySchema && preset.period_type === "daily" ? "daily" : "monthly";
+    const labels = App.periodLabels(periodType);
+    const periodField = App.state.hasDailySchema
+      ? '<div class="field"><label>' + App.esc(t("rentals.periodType")) + "</label>" +
+          '<select name="period_type">' +
+            App.option("monthly", t("rentals.periodMonthly"), periodType === "monthly") +
+            App.option("daily", t("rentals.periodDaily"), periodType === "daily") +
+          "</select></div>"
+      : "";
     const start = preset.start_date || App.today();
-    const end = preset.end_date || App.addMonths(start, 1);
+    const end = preset.end_date || (periodType === "daily" ? App.addDays(start, 1) : App.addMonths(start, 1));
 
     const m = App.openModal({
       title: editing ? t("rentals.edit") : t("rentals.add"),
@@ -142,11 +152,14 @@
       body:
         '<form id="rnt-form">' +
           '<div class="form-grid">' +
+            periodField +
             '<div class="field"><label>' + App.esc(t("rentals.apartment")) + " *</label>" +
               '<select name="apartment_id" required>' +
                 '<option value="">' + App.esc(t("common.select")) + "</option>" +
                 apartments.map(function (a) {
-                  return App.option(a.id, a.name + " — " + App.money(a.rent_amount) + (occupied[a.id] && a.id !== preset.apartment_id ? " (" + t("status.occupied") + ")" : ""), preset.apartment_id === a.id);
+                  const price = App.money(a.rent_amount) + " / " + t("common.monthsShort") +
+                    (a.daily_rate ? " · " + App.money(a.daily_rate) + " / " + t("common.nightsShort") : "");
+                  return App.option(a.id, a.name + " — " + price + (occupied[a.id] && a.id !== preset.apartment_id ? " (" + t("status.occupied") + ")" : ""), preset.apartment_id === a.id);
                 }).join("") +
               "</select></div>" +
             '<div class="field"><label>' + App.esc(t("rentals.client")) + " *</label>" +
@@ -158,10 +171,10 @@
               '<input name="start_date" type="date" required value="' + App.esc(start) + '"></div>' +
             '<div class="field"><label>' + App.esc(t("rentals.endDate")) + "</label>" +
               '<input name="end_date" type="date" value="' + App.esc(end) + '"></div>' +
-            '<div class="field"><label>' + App.esc(t("rentals.months")) + "</label>" +
-              '<input name="months" type="number" min="0.5" step="0.5" value="' + App.esc(preset.months || App.calcMonths(start, end)) + '">' +
-              '<span class="form-hint">' + App.esc(t("rentals.monthsHint")) + "</span></div>" +
-            '<div class="field"><label>' + App.esc(t("rentals.rentAmount")) + " *</label>" +
+            '<div class="field"><label id="rnt-qty-label">' + App.esc(t(labels.quantity)) + "</label>" +
+              '<input name="months" id="rnt-qty" type="number" min="' + (periodType === "daily" ? 1 : 0.5) + '" step="' + (periodType === "daily" ? 1 : 0.5) + '" value="' + App.esc(preset.months || App.calcQuantity(periodType, start, end)) + '">' +
+              '<span class="form-hint" id="rnt-qty-hint">' + App.esc(t(labels.quantityHint)) + "</span></div>" +
+            '<div class="field"><label id="rnt-rent-label">' + App.esc(t(labels.rent)) + " *</label>" +
               '<input name="rent_amount" type="number" min="0" step="0.01" required value="' + App.esc(preset.rent_amount || "") + '"></div>' +
             '<div class="field"><label>' + App.esc(t("rentals.totalAmount")) + " *</label>" +
               '<input name="total_amount" type="number" min="0" step="0.01" required value="' + App.esc(preset.total_amount || "") + '"></div>' +
@@ -178,44 +191,80 @@
 
     const form = m.root.querySelector("#rnt-form");
     const err = m.root.querySelector("#rnt-err");
-    const fApartment = form.elements.apartment_id;
-    const fStart = form.elements.start_date;
+    const fPeriod = form.elements.period_type;
+    const fApartment = form.elements.apartment_id;    const fStart = form.elements.start_date;
     const fEnd = form.elements.end_date;
     const fMonths = form.elements.months;
     const fRent = form.elements.rent_amount;
     const fTotal = form.elements.total_amount;
 
-    function recomputeTotal(source) {
-      const months = Number(fMonths.value || 0);
-      const rent = Number(fRent.value || 0);
-      if (source !== "total") fTotal.value = Math.round(months * rent * 100) / 100;
+    function rateFor(a, pt) {
+      if (!a) return 0;
+      return Number(pt === "daily" ? (a.daily_rate || 0) : (a.rent_amount || 0));
     }
 
-    fApartment.addEventListener("change", function () {
-      const a = apartments.find(function (x) { return x.id === fApartment.value; });
-      if (a) {
-        fRent.value = a.rent_amount;
-        recomputeTotal();
+    function currentPeriod() {
+      return App.state.hasDailySchema && fPeriod ? fPeriod.value : "monthly";
+    }
+
+    function applyPeriodLabels() {
+      const pt = currentPeriod();
+      const l = App.periodLabels(pt);
+      form.querySelector("#rnt-qty-label").textContent = t(l.quantity);
+      form.querySelector("#rnt-qty-hint").textContent = t(l.quantityHint);
+      form.querySelector("#rnt-rent-label").textContent = t(l.rent) + " *";
+      fMonths.min = pt === "daily" ? "1" : "0.5";
+      fMonths.step = pt === "daily" ? "1" : "0.5";
+    }
+
+    function resyncQuantity() {
+      if (fStart.value && fEnd.value) {
+        fMonths.value = App.calcQuantity(currentPeriod(), fStart.value, fEnd.value);
       }
+    }
+
+    function syncRentFromApartment() {
+      const a = apartments.find(function (x) { return x.id === fApartment.value; });
+      if (a) fRent.value = rateFor(a, currentPeriod());
+    }
+
+    function recomputeTotal(source) {
+      const qty = Number(fMonths.value || 0);
+      const rent = Number(fRent.value || 0);
+      if (source !== "total") fTotal.value = Math.round(qty * rent * 100) / 100;
+    }
+
+    if (fPeriod) {
+      fPeriod.addEventListener("change", function () {
+        applyPeriodLabels();
+        resyncQuantity();
+        syncRentFromApartment();
+        recomputeTotal();
+      });
+    }
+    fApartment.addEventListener("change", function () {
+      syncRentFromApartment();
+      recomputeTotal();
     });
     fStart.addEventListener("change", function () {
       if (fEnd.value) {
-        fMonths.value = App.calcMonths(fStart.value, fEnd.value);
+        resyncQuantity();
         recomputeTotal();
       }
     });
     fEnd.addEventListener("change", function () {
       if (fStart.value && fEnd.value) {
-        fMonths.value = App.calcMonths(fStart.value, fEnd.value);
+        resyncQuantity();
         recomputeTotal();
       }
     });
     fMonths.addEventListener("input", function () { recomputeTotal(); });
+    fRent.addEventListener("input", function () { recomputeTotal(); });
 
     /* Valeurs initiales */
-    if (preset.apartment_id) {
+    if (preset.apartment_id && !preset.rent_amount) {
       const a = apartments.find(function (x) { return x.id === preset.apartment_id; });
-      if (a && !preset.rent_amount) fRent.value = a.rent_amount;
+      if (a) fRent.value = rateFor(a, currentPeriod());
     }
     if (preset.total_amount) fTotal.value = preset.total_amount;
     else recomputeTotal();
@@ -235,8 +284,14 @@
         notes: String(form.elements.notes.value || "").trim() || null,
         status: editing ? editing.status : "active"
       };
+      if (App.state.hasDailySchema) payload.period_type = currentPeriod();
 
       if (!payload.apartment_id || !payload.client_id || !payload.start_date) {
+        err.textContent = t("errors.missingFields");
+        err.classList.remove("hidden");
+        return;
+      }
+      if (payload.period_type === "daily" && !payload.end_date) {
         err.textContent = t("errors.missingFields");
         err.classList.remove("hidden");
         return;
@@ -309,8 +364,9 @@
           detail(t("rentals.apartment"), rental.apartments ? rental.apartments.name : "—") +
           detail(t("rentals.client"), (rental.clients ? rental.clients.full_name : "—") + (rental.clients && rental.clients.phone ? " · " + rental.clients.phone : "")) +
           detail(t("common.period"), App.date(rental.start_date) + " → " + App.date(rental.end_date)) +
-          detail(t("rentals.months"), App.num(rental.months)) +
-          detail(t("rentals.rentAmount"), App.money(rental.rent_amount)) +
+          (App.state.hasDailySchema ? detail(t("rentals.periodType"), t(rental.period_type === "daily" ? "rentals.periodDaily" : "rentals.periodMonthly")) : "") +
+          detail(t(App.periodLabels(rental.period_type).quantity), App.num(rental.months)) +
+          detail(t(App.periodLabels(rental.period_type).rent), App.money(rental.rent_amount)) +
           '<div class="detail-item"><span class="label">' + App.esc(t("common.status")) + "</span><span>" + App.badge(rental.status) + "</span></div>" +
         "</div>" +
 
@@ -716,6 +772,8 @@
         "<tr><td>" + App.esc(t("common.phone")) + "</td><td>" + App.esc(cli.phone || "—") + "</td></tr>" +
         "<tr><td>" + App.esc(t("payments.forApartment")) + "</td><td>" + App.esc([apt.name, apt.address, apt.city].filter(Boolean).join(" — ") || "—") + "</td></tr>" +
         "<tr><td>" + App.esc(t("payments.period")) + "</td><td>" + App.esc(App.date(r.start_date) + " → " + App.date(r.end_date)) + "</td></tr>" +
+        "<tr><td>" + App.esc(t("rentals.periodType")) + "</td><td>" + App.esc(t(r.period_type === "daily" ? "rentals.periodDaily" : "rentals.periodMonthly")) + "</td></tr>" +
+        "<tr><td>" + App.esc(t(App.periodLabels(r.period_type).quantity)) + "</td><td>" + App.esc(App.num(r.months) + " " + t(App.periodLabels(r.period_type).unitShort)) + "</td></tr>" +
         "<tr><td>" + App.esc(t("common.method")) + "</td><td>" + App.esc(t("method." + p.method)) + (p.reference ? " · " + App.esc(p.reference) : "") + "</td></tr>" +
         "</table>" +
 
