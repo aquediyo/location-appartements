@@ -73,6 +73,7 @@
       App.state.profile = profile;
       await App.loadSettings();
       try { await App.loadProfiles(true); } catch (e) { /* non bloquant */ }
+      try { await App.detectDailySchema(); } catch (e) { /* non bloquant */ }
 
       hide(byId("boot"));
       hide(byId("auth-screen"));
