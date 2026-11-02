@@ -66,7 +66,7 @@
               (a.description ? '<div class="cell-sub">' + App.esc(a.description) + "</div>" : "") + "</td>" +
             '<td class="small">' + App.esc([a.address, a.city].filter(Boolean).join(", ") || "—") + "</td>" +
             '<td class="num">' + (a.rooms ? App.num(a.rooms) : "—") + "</td>" +
-            '<td class="num nowrap">' + App.esc(App.money(a.rent_amount)) + "</td>" +
+            '<td class="num nowrap">' + App.esc(App.money(a.rent_amount)) + (a.daily_rate ? '<div class="cell-sub">' + App.esc(App.money(a.daily_rate) + " / " + t("common.nightsShort")) + "</div>" : "") + "</td>" +
             "<td>" + App.badge(a.status) + "</td>" +
             '<td class="small">' + (a.status === "occupied" ? App.esc(tenantByApt[a.id] || "—") : '<span class="muted">' + App.esc(t("apartments.vacant")) + "</span>") + "</td>" +
             (isAdmin ? '<td class="actions">' +
@@ -102,6 +102,10 @@
 
     function openForm(a) {
       const isEdit = !!a;
+      const dailyField = App.state.hasDailySchema
+        ? '<div class="field"><label>' + App.esc(t("apartments.dailyRate")) + "</label>" +
+            '<input name="daily_rate" type="number" min="0" step="0.01" value="' + App.esc(isEdit && a.daily_rate ? a.daily_rate : "") + '"></div>'
+        : "";
       const m = App.openModal({
         title: isEdit ? t("apartments.edit") : t("apartments.add"),
         body:
@@ -117,6 +121,7 @@
                 '<input name="rooms" type="number" min="0" step="1" value="' + App.esc(isEdit && a.rooms ? a.rooms : "") + '"></div>' +
               '<div class="field"><label>' + App.esc(t("apartments.rent")) + " *</label>" +
                 '<input name="rent_amount" type="number" min="0" step="0.01" required value="' + App.esc(isEdit ? a.rent_amount : "") + '"></div>' +
+              dailyField +
               '<div class="field"><label>' + App.esc(t("common.status")) + "</label>" +
                 '<select name="status">' +
                   STATUSES.map(function (s) { return App.option(s, t("status." + s), isEdit ? a.status === s : s === "available"); }).join("") +
@@ -147,6 +152,7 @@
           status: String(fd.get("status") || "available"),
           description: String(fd.get("description") || "").trim() || null
         };
+        if (App.state.hasDailySchema) payload.daily_rate = Number(fd.get("daily_rate") || 0);
         if (!payload.name) {
           err.textContent = t("errors.missingFields");
           err.classList.remove("hidden");
