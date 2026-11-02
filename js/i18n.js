@@ -96,6 +96,7 @@ window.I18N = {
     "common.count": "Nombre",
     "common.monthsShort": "mois",
     "common.nightsShort": "nuits",
+    "common.perNight": "nuit",
     "common.unknown": "Inconnu",
     "common.notProvided": "Non renseigné",
 
@@ -411,6 +412,7 @@ window.I18N = {
     "common.count": "العدد",
     "common.monthsShort": "أشهر",
     "common.nightsShort": "ليالٍ",
+    "common.perNight": "ليلة",
     "common.unknown": "غير معروف",
     "common.notProvided": "غير محدد",
 
