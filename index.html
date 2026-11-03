@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=5">
+  <link rel="stylesheet" href="css/styles.css?v=6">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -118,6 +118,11 @@
         <button id="menu-btn" class="icon-btn menu-btn" aria-label="Menu"></button>
         <h1 id="page-title" class="page-title"></h1>
         <div class="topbar-actions">
+          <div class="notif-wrap" id="notif-wrap">
+            <button id="notif-btn" class="icon-btn hidden" type="button" aria-label="Notifications" aria-expanded="false"></button>
+            <span id="notif-badge" class="notif-badge hidden">0</span>
+            <div id="notif-panel" class="notif-panel hidden" role="dialog" aria-label="Notifications"></div>
+          </div>
           <button class="icon-btn" type="button" data-theme-toggle aria-label="Thème"></button>
           <div class="lang-switch">
             <button class="lang-btn" data-lang="fr">FR</button>
@@ -133,19 +138,20 @@
   <div id="modal-root"></div>
   <div id="toast-root" class="toast-root"></div>
 
-  <script src="js/config.js?v=5"></script>
-  <script src="js/i18n.js?v=5"></script>
-  <script src="js/core.js?v=5"></script>
-  <script src="js/views/dashboard.js?v=5"></script>
-  <script src="js/views/apartments.js?v=5"></script>
-  <script src="js/views/clients.js?v=5"></script>
-  <script src="js/views/reservations.js?v=5"></script>
-  <script src="js/views/rentals.js?v=5"></script>
-  <script src="js/views/payments.js?v=5"></script>
-  <script src="js/views/expenses.js?v=5"></script>
-  <script src="js/views/cash.js?v=5"></script>
-  <script src="js/views/users.js?v=5"></script>
-  <script src="js/views/settings.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/config.js?v=6"></script>
+  <script src="js/i18n.js?v=6"></script>
+  <script src="js/core.js?v=6"></script>
+  <script src="js/notifications.js?v=6"></script>
+  <script src="js/views/dashboard.js?v=6"></script>
+  <script src="js/views/apartments.js?v=6"></script>
+  <script src="js/views/clients.js?v=6"></script>
+  <script src="js/views/reservations.js?v=6"></script>
+  <script src="js/views/rentals.js?v=6"></script>
+  <script src="js/views/payments.js?v=6"></script>
+  <script src="js/views/expenses.js?v=6"></script>
+  <script src="js/views/cash.js?v=6"></script>
+  <script src="js/views/users.js?v=6"></script>
+  <script src="js/views/settings.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>

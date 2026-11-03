@@ -130,7 +130,23 @@ create table if not exists public.expenses (
 );
 
 -- ----------------------------------------------------------------------------
--- 8. PARAMÈTRES (ligne unique)
+-- 8. NOTIFICATIONS (activité du concierge pour les administrateurs)
+-- ----------------------------------------------------------------------------
+create table if not exists public.notifications (
+  id           uuid primary key default gen_random_uuid(),
+  recipient_id uuid not null references public.profiles(id) on delete cascade,
+  actor_id     uuid references public.profiles(id) on delete set null,
+  kind         text not null,
+  entity       text check (entity in ('rental','expense')),
+  entity_id    uuid,
+  data         jsonb not null default '{}'::jsonb,
+  link         text,
+  is_read      boolean not null default false,
+  created_at   timestamptz not null default now()
+);
+
+-- ----------------------------------------------------------------------------
+-- 9. PARAMÈTRES (ligne unique)
 -- ----------------------------------------------------------------------------
 create table if not exists public.settings (
   id              int primary key default 1 check (id = 1),
@@ -148,6 +164,7 @@ create index if not exists idx_payments_rental      on public.payments (rental_i
 create index if not exists idx_payments_date        on public.payments (paid_on);
 create index if not exists idx_expenses_date        on public.expenses (spent_on);
 create index if not exists idx_expenses_user        on public.expenses (created_by);
+create index if not exists idx_notifications_user   on public.notifications (recipient_id, is_read, created_at desc);
 create index if not exists idx_rentals_apartment    on public.rentals (apartment_id);
 create index if not exists idx_rentals_status       on public.rentals (status);
 create index if not exists idx_reservations_start   on public.reservations (start_date);
@@ -264,6 +281,142 @@ begin
 end;
 $$;
 
+-- Notifie les administrateurs des créations / modifications / suppressions
+-- effectuées par un concierge sur les locations et les dépenses.
+create or replace function public.notify_admin_activity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor      uuid := auth.uid();
+  actor_role text;
+  actor_name text;
+  v_kind     text;
+  v_entity   text;
+  v_entity_id uuid;
+  v_data     jsonb;
+  v_link     text;
+  admin_row  record;
+begin
+  if actor is null then return null; end if;
+
+  select p.role, coalesce(nullif(p.full_name, ''), p.email, 'Concierge')
+    into actor_role, actor_name
+    from public.profiles p
+   where p.id = actor;
+
+  if actor_role is distinct from 'concierge' then
+    return null;
+  end if;
+
+  if tg_table_name = 'rentals' then
+    v_entity := 'rental';
+    v_link := '#/rentals';
+
+    if tg_op = 'INSERT' then
+      v_kind := 'rental_created';
+      v_entity_id := new.id;
+      v_data := jsonb_build_object(
+        'actor', actor_name,
+        'apartment', (select name from public.apartments where id = new.apartment_id),
+        'client', (select full_name from public.clients where id = new.client_id),
+        'start_date', new.start_date,
+        'end_date', new.end_date,
+        'total', new.total_amount,
+        'period_type', new.period_type
+      );
+
+    elsif tg_op = 'UPDATE' then
+      v_entity_id := new.id;
+      if new.status = 'ended' and old.status is distinct from 'ended' then
+        v_kind := 'rental_ended';
+        v_data := jsonb_build_object(
+          'actor', actor_name,
+          'apartment', (select name from public.apartments where id = new.apartment_id),
+          'client', (select full_name from public.clients where id = new.client_id),
+          'ended_at', coalesce(new.ended_at, current_date),
+          'total', new.total_amount
+        );
+      else
+        v_kind := 'rental_updated';
+        v_data := jsonb_build_object(
+          'actor', actor_name,
+          'apartment', (select name from public.apartments where id = new.apartment_id),
+          'client', (select full_name from public.clients where id = new.client_id),
+          'status', new.status,
+          'total', new.total_amount
+        );
+      end if;
+
+    elsif tg_op = 'DELETE' then
+      v_kind := 'rental_deleted';
+      v_entity_id := old.id;
+      v_data := jsonb_build_object(
+        'actor', actor_name,
+        'apartment', (select name from public.apartments where id = old.apartment_id),
+        'client', (select full_name from public.clients where id = old.client_id),
+        'total', old.total_amount
+      );
+    else
+      return null;
+    end if;
+
+  elsif tg_table_name = 'expenses' then
+    v_entity := 'expense';
+    v_link := '#/expenses';
+
+    if tg_op = 'INSERT' then
+      v_kind := 'expense_created';
+      v_entity_id := new.id;
+      v_data := jsonb_build_object(
+        'actor', actor_name,
+        'label', new.label,
+        'amount', new.amount,
+        'category', new.category,
+        'spent_on', new.spent_on
+      );
+
+    elsif tg_op = 'UPDATE' then
+      v_kind := 'expense_updated';
+      v_entity_id := new.id;
+      v_data := jsonb_build_object(
+        'actor', actor_name,
+        'label', new.label,
+        'amount', new.amount,
+        'spent_on', new.spent_on
+      );
+
+    elsif tg_op = 'DELETE' then
+      v_kind := 'expense_deleted';
+      v_entity_id := old.id;
+      v_data := jsonb_build_object(
+        'actor', actor_name,
+        'label', old.label,
+        'amount', old.amount,
+        'spent_on', old.spent_on
+      );
+    else
+      return null;
+    end if;
+
+  else
+    return null;
+  end if;
+
+  for admin_row in
+    select id from public.profiles
+     where role = 'admin' and active = true and id <> actor
+  loop
+    insert into public.notifications (recipient_id, actor_id, kind, entity, entity_id, data, link)
+    values (admin_row.id, actor, v_kind, v_entity, v_entity_id, v_data, v_link);
+  end loop;
+
+  return null;
+end;
+$$;
+
 -- ----------------------------------------------------------------------------
 -- TRIGGERS
 -- ----------------------------------------------------------------------------
@@ -281,6 +434,16 @@ drop trigger if exists trg_sync_apartment on public.rentals;
 create trigger trg_sync_apartment
   after insert or update or delete on public.rentals
   for each row execute function public.sync_apartment_status();
+
+drop trigger if exists trg_notify_admin_rentals on public.rentals;
+create trigger trg_notify_admin_rentals
+  after insert or update or delete on public.rentals
+  for each row execute function public.notify_admin_activity();
+
+drop trigger if exists trg_notify_admin_expenses on public.expenses;
+create trigger trg_notify_admin_expenses
+  after insert or update or delete on public.expenses
+  for each row execute function public.notify_admin_activity();
 
 drop trigger if exists trg_touch_profiles on public.profiles;
 create trigger trg_touch_profiles before update on public.profiles
@@ -316,6 +479,7 @@ alter table public.reservations enable row level security;
 alter table public.rentals      enable row level security;
 alter table public.payments     enable row level security;
 alter table public.expenses     enable row level security;
+alter table public.notifications enable row level security;
 alter table public.settings     enable row level security;
 
 -- PROFILS
@@ -437,6 +601,24 @@ create policy expenses_delete on public.expenses
   for delete to authenticated
   using (public.is_admin() or created_by = auth.uid());
 
+-- NOTIFICATIONS : chaque administrateur ne voit et ne gère que les siennes.
+-- L'insertion est réservée au trigger security definer.
+drop policy if exists notifications_select on public.notifications;
+create policy notifications_select on public.notifications
+  for select to authenticated
+  using (recipient_id = auth.uid());
+
+drop policy if exists notifications_update on public.notifications;
+create policy notifications_update on public.notifications
+  for update to authenticated
+  using (recipient_id = auth.uid())
+  with check (recipient_id = auth.uid());
+
+drop policy if exists notifications_delete on public.notifications;
+create policy notifications_delete on public.notifications
+  for delete to authenticated
+  using (recipient_id = auth.uid());
+
 -- PARAMÈTRES
 drop policy if exists settings_select on public.settings;
 create policy settings_select on public.settings
@@ -451,5 +633,22 @@ create policy settings_update on public.settings
 -- ----------------------------------------------------------------------------
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select, update, delete on public.notifications to authenticated;
 grant execute on function public.is_staff() to authenticated;
 grant execute on function public.is_admin() to authenticated;
+
+-- Temps réel : les nouvelles notifications arrivent sans rechargement.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1 from pg_publication_tables
+        where pubname = 'supabase_realtime'
+          and schemaname = 'public'
+          and tablename = 'notifications'
+     )
+  then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+end;
+$$;

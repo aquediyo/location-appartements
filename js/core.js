@@ -89,7 +89,10 @@
     return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || "") + "</svg>";
   };
 
-  /* ----------------------------- Traduction ------------------------------- */
+  /* ---------------------------- Notifications ---------------------------- */
+  App.notifBellIcon = function (size) {
+    return '<svg width="' + (size || 18) + '" height="' + (size || 18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+  };
   App.t = function (key, vars) {
     const lang = App.state.lang;
     let str = (window.I18N[lang] && window.I18N[lang][key]) || window.I18N.fr[key] || key;
@@ -447,6 +450,7 @@
     });
   };
 
+  /* ----------------------------- Traduction ------------------------------- */
   App.applyTheme = function (theme, persist) {
     const next = theme === "dark" ? "dark" : "light";
     App.state.theme = next;
@@ -456,7 +460,7 @@
     }
     const meta = document.getElementById("theme-color-meta");
     if (meta) meta.setAttribute("content", next === "dark" ? "#080e19" : "#f5f7fb");
-    App.updateThemeButtons();
+    if (typeof App.updateThemeButtons === "function") App.updateThemeButtons();
   };
 
   App.setTheme = function (theme) { App.applyTheme(theme, true); };
@@ -593,7 +597,7 @@
     document.querySelectorAll("[data-theme-toggle]").forEach(function (btn) {
       btn.addEventListener("click", function () { App.toggleTheme(); });
     });
-    App.applyTheme(App.state.theme);
+    if (typeof App.applyTheme === "function") App.applyTheme(App.state.theme);
 
     if (window.matchMedia) {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
