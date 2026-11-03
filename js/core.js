@@ -38,6 +38,7 @@
       { id: "reservations", icon: "reservations" },
       { id: "rentals", icon: "rentals" },
       { id: "payments", icon: "payments" },
+      { id: "expenses", icon: "expenses" },
       { id: "cash", icon: "cash", admin: true },
       { id: "users", icon: "users", admin: true },
       { id: "settings", icon: "settings", admin: true }
@@ -52,6 +53,7 @@
     reservations: '<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 9.5h18"/>',
     rentals: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9"/><path d="m17 3 4 4"/><path d="m14 6 3 3"/>',
     payments: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/>',
+    expenses: '<path d="M6 2h9l3 3v17H6z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
     cash: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 16.5z"/><path d="M3 7.5V6a2 2 0 0 1 2-2h11"/><path d="M17 12h.01"/>',
     users: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/>',
@@ -488,8 +490,17 @@
       container.innerHTML = App.emptyState("🚧", App.t("common.error"), id);
       return;
     }
+
+    /* Chaque vue travaille dans son propre conteneur : si l'utilisateur change
+       de page pendant un chargement, l'ancienne vue écrit dans un noeud détaché
+       et ne peut plus écraser la nouvelle page. */
+    const mount = document.createElement("div");
+    container.innerHTML = "";
+    container.appendChild(mount);
+    mount.innerHTML = App.loadingBlock();
+
     try {
-      await view.render(container);
+      await view.render(mount);
       if (token !== renderToken) return;
     } catch (err) {
       console.error(err);

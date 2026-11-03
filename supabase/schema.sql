@@ -147,6 +147,7 @@ insert into public.settings (id) values (1) on conflict (id) do nothing;
 create index if not exists idx_payments_rental      on public.payments (rental_id);
 create index if not exists idx_payments_date        on public.payments (paid_on);
 create index if not exists idx_expenses_date        on public.expenses (spent_on);
+create index if not exists idx_expenses_user        on public.expenses (created_by);
 create index if not exists idx_rentals_apartment    on public.rentals (apartment_id);
 create index if not exists idx_rentals_status       on public.rentals (status);
 create index if not exists idx_reservations_start   on public.reservations (start_date);
@@ -414,22 +415,27 @@ drop policy if exists payments_delete on public.payments;
 create policy payments_delete on public.payments
   for delete to authenticated using (public.is_admin());
 
--- DÉPENSES
+-- DÉPENSES : chacun voit et gère les siennes, l'admin voit et gère tout
 drop policy if exists expenses_select on public.expenses;
 create policy expenses_select on public.expenses
-  for select to authenticated using (public.is_staff());
+  for select to authenticated
+  using (public.is_admin() or created_by = auth.uid());
 
 drop policy if exists expenses_insert on public.expenses;
 create policy expenses_insert on public.expenses
-  for insert to authenticated with check (public.is_staff());
+  for insert to authenticated
+  with check (public.is_staff() and (public.is_admin() or created_by = auth.uid()));
 
 drop policy if exists expenses_update on public.expenses;
 create policy expenses_update on public.expenses
-  for update to authenticated using (public.is_staff()) with check (public.is_staff());
+  for update to authenticated
+  using (public.is_admin() or created_by = auth.uid())
+  with check (public.is_admin() or created_by = auth.uid());
 
 drop policy if exists expenses_delete on public.expenses;
 create policy expenses_delete on public.expenses
-  for delete to authenticated using (public.is_admin());
+  for delete to authenticated
+  using (public.is_admin() or created_by = auth.uid());
 
 -- PARAMÈTRES
 drop policy if exists settings_select on public.settings;

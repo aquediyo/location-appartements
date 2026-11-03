@@ -5,7 +5,7 @@ Application web de gestion locative pour deux profils :
 | Rôle | Ce qu'il peut faire |
 |------|---------------------|
 | **Administrateur** | Ajouter / modifier les appartements, gérer les utilisateurs, consulter la **caisse**, les recettes, les dépenses, les impayés, les paramètres |
-| **Concierge** | Créer des clients, des **réservations**, des **locations**, saisir les **paiements (multiples / partiels)**, enregistrer la **sortie** des locataires, imprimer des reçus |
+| **Concierge** | Créer des clients, des **réservations**, des **locations**, saisir les **paiements (multiples / partiels)**, enregistrer **ses dépenses**, enregistrer la **sortie** des locataires, imprimer des reçus |
 
 Interface **bilingue français / arabe** (avec affichage droite-à-gauche), responsive (ordinateur, tablette, téléphone), données partagées en ligne via **Supabase**.
 
@@ -90,6 +90,13 @@ Le site est 100 % statique : envoyez le dossier complet sur un hébergeur gratui
   - modifier la location ou un paiement ;
   - **enregistrer la sortie** du locataire (l'appartement redevient disponible).
 
+### Dépenses (admin + concierge)
+- Menu **Dépenses → Nouvelle dépense** : libellé, montant, date, catégorie, notes.
+- Chaque dépense est automatiquement enregistrée **au nom de l'utilisateur connecté** (affiché dans la colonne « Payé par »).
+- Le **concierge** ne voit et ne gère que **ses propres dépenses** ; l'**administrateur** voit et gère **toutes** les dépenses, avec un filtre par utilisateur.
+- Période : aujourd'hui, semaine, mois, année, tout, ou dates personnalisées ; **export CSV**.
+- Les dépenses alimentent aussi la **Caisse** (admin) pour le calcul du solde.
+
 ### Caisse (admin)
 - Période : aujourd'hui, semaine, mois, année, tout, ou dates personnalisées.
 - Cartes : **Recettes**, **Dépenses**, **Solde**, **Impayés**.
@@ -117,7 +124,8 @@ js/views/clients.js      Clients + historique
 js/views/reservations.js Réservations + conversion
 js/views/rentals.js      Locations, paiements, reçus, sorties
 js/views/payments.js     Journal des paiements
-js/views/cash.js         Caisse, dépenses, export CSV
+js/views/expenses.js     Dépenses (admin + concierge), export CSV
+js/views/cash.js         Caisse, synthèse, export CSV
 js/views/users.js        Comptes et rôles
 js/views/settings.js     Paramètres
 supabase/schema.sql      Base de données + sécurité
