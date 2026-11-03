@@ -20,12 +20,20 @@
   }
 
   const storedLang = localStorage.getItem("app_lang");
+  function detectTheme() {
+    try {
+      const saved = localStorage.getItem("app_theme");
+      if (saved === "dark" || saved === "light") return saved;
+    } catch (e) { /* stockage indisponible */ }
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
   const App = (window.App = {
     sb: sb,
     configured: configured,
     config: cfg,
     state: {
       lang: storedLang || cfg.defaultLang || "fr",
+      theme: detectTheme(),
       profile: null,
       settings: null,
       paymentsCache: null,
@@ -71,7 +79,9 @@
     key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9"/><path d="m17 3 4 4"/>',
     home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
     checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
-    alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>'
+    alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
   };
 
   App.icon = function (name, size) {
@@ -408,6 +418,7 @@
     document.querySelectorAll(".lang-btn").forEach(function (b) {
       b.classList.toggle("active", b.getAttribute("data-lang") === App.state.lang);
     });
+    App.updateThemeButtons();
   };
 
   App.setLang = function (lang) {
@@ -422,6 +433,36 @@
       App.updateUserChip();
       App.renderRoute();
     }
+  };
+
+  /* ------------------------------ Thème ----------------------------------- */
+  App.updateThemeButtons = function () {
+    const dark = App.state.theme === "dark";
+    const label = App.t(dark ? "theme.light" : "theme.dark");
+    document.querySelectorAll("[data-theme-toggle]").forEach(function (btn) {
+      btn.innerHTML = App.icon(dark ? "sun" : "moon", 18);
+      btn.setAttribute("title", label);
+      btn.setAttribute("aria-label", label);
+      btn.setAttribute("aria-pressed", dark ? "true" : "false");
+    });
+  };
+
+  App.applyTheme = function (theme, persist) {
+    const next = theme === "dark" ? "dark" : "light";
+    App.state.theme = next;
+    document.documentElement.setAttribute("data-theme", next);
+    if (persist) {
+      try { localStorage.setItem("app_theme", next); } catch (e) { /* stockage indisponible */ }
+    }
+    const meta = document.getElementById("theme-color-meta");
+    if (meta) meta.setAttribute("content", next === "dark" ? "#080e19" : "#f5f7fb");
+    App.updateThemeButtons();
+  };
+
+  App.setTheme = function (theme) { App.applyTheme(theme, true); };
+
+  App.toggleTheme = function () {
+    App.applyTheme(App.state.theme === "dark" ? "light" : "dark", true);
   };
 
   /* ------------------------------ Routeur --------------------------------- */
@@ -548,6 +589,24 @@
     document.querySelectorAll(".lang-btn").forEach(function (btn) {
       btn.addEventListener("click", function () { App.setLang(btn.getAttribute("data-lang")); });
     });
+
+    document.querySelectorAll("[data-theme-toggle]").forEach(function (btn) {
+      btn.addEventListener("click", function () { App.toggleTheme(); });
+    });
+    App.applyTheme(App.state.theme);
+
+    if (window.matchMedia) {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const onSystemTheme = function (e) {
+        let saved = null;
+        try { saved = localStorage.getItem("app_theme"); } catch (err) { saved = null; }
+        if (saved !== "dark" && saved !== "light") {
+          App.applyTheme(e.matches ? "dark" : "light");
+        }
+      };
+      if (mq.addEventListener) mq.addEventListener("change", onSystemTheme);
+      else if (mq.addListener) mq.addListener(onSystemTheme);
+    }
 
     window.addEventListener("hashchange", function () {
       App.renderRoute();

@@ -4,11 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gestion de locations</title>
+  <meta name="theme-color" content="#f5f7fb" id="theme-color-meta">
+  <script>
+    /* Applique le thème avant le premier rendu pour éviter tout clignotement. */
+    (function () {
+      try {
+        var t = localStorage.getItem("app_theme");
+        if (t !== "dark" && t !== "light") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+        var m = document.getElementById("theme-color-meta");
+        if (m) m.setAttribute("content", t === "dark" ? "#080e19" : "#f5f7fb");
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=4">
+  <link rel="stylesheet" href="css/styles.css?v=5">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -23,6 +40,7 @@
     <div class="auth-lang">
       <button class="lang-btn" data-lang="fr">FR</button>
       <button class="lang-btn" data-lang="ar">AR</button>
+      <button class="theme-btn" type="button" data-theme-toggle aria-label="Thème"></button>
     </div>
 
     <div class="auth-card">
@@ -100,6 +118,7 @@
         <button id="menu-btn" class="icon-btn menu-btn" aria-label="Menu"></button>
         <h1 id="page-title" class="page-title"></h1>
         <div class="topbar-actions">
+          <button class="icon-btn" type="button" data-theme-toggle aria-label="Thème"></button>
           <div class="lang-switch">
             <button class="lang-btn" data-lang="fr">FR</button>
             <button class="lang-btn" data-lang="ar">ع</button>
@@ -114,19 +133,19 @@
   <div id="modal-root"></div>
   <div id="toast-root" class="toast-root"></div>
 
-  <script src="js/config.js?v=4"></script>
-  <script src="js/i18n.js?v=4"></script>
-  <script src="js/core.js?v=4"></script>
-  <script src="js/views/dashboard.js?v=4"></script>
-  <script src="js/views/apartments.js?v=4"></script>
-  <script src="js/views/clients.js?v=4"></script>
-  <script src="js/views/reservations.js?v=4"></script>
-  <script src="js/views/rentals.js?v=4"></script>
-  <script src="js/views/payments.js?v=4"></script>
-  <script src="js/views/expenses.js?v=4"></script>
-  <script src="js/views/cash.js?v=4"></script>
-  <script src="js/views/users.js?v=4"></script>
-  <script src="js/views/settings.js?v=4"></script>
-  <script src="js/app.js?v=4"></script>
+  <script src="js/config.js?v=5"></script>
+  <script src="js/i18n.js?v=5"></script>
+  <script src="js/core.js?v=5"></script>
+  <script src="js/views/dashboard.js?v=5"></script>
+  <script src="js/views/apartments.js?v=5"></script>
+  <script src="js/views/clients.js?v=5"></script>
+  <script src="js/views/reservations.js?v=5"></script>
+  <script src="js/views/rentals.js?v=5"></script>
+  <script src="js/views/payments.js?v=5"></script>
+  <script src="js/views/expenses.js?v=5"></script>
+  <script src="js/views/cash.js?v=5"></script>
+  <script src="js/views/users.js?v=5"></script>
+  <script src="js/views/settings.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>

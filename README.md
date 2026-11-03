@@ -7,7 +7,7 @@ Application web de gestion locative pour deux profils :
 | **Administrateur** | Ajouter / modifier les appartements, gérer les utilisateurs, consulter la **caisse**, les recettes, les dépenses, les impayés, les paramètres |
 | **Concierge** | Créer des clients, des **réservations**, des **locations**, saisir les **paiements (multiples / partiels)**, enregistrer **ses dépenses**, enregistrer la **sortie** des locataires, imprimer des reçus |
 
-Interface **bilingue français / arabe** (avec affichage droite-à-gauche), responsive (ordinateur, tablette, téléphone), données partagées en ligne via **Supabase**.
+Interface **bilingue français / arabe** (avec affichage droite-à-gauche), **thème clair ou sombre** (bouton soleil/lune, préférence mémorisée), responsive (ordinateur, tablette, téléphone), données partagées en ligne via **Supabase**.
 
 **Application en ligne :** https://aquediyo.github.io/location-appartements/
 

@@ -34,7 +34,7 @@
           "</form>" +
         "</div>" +
       "</div>" +
-      '<div class="card" style="max-width:640px;margin-top:16px;border-color:#fecaca">' +
+      '<div class="card" style="max-width:640px;margin-top:16px;border-color:var(--danger-border)">' +
         '<div class="card-head"><h2 style="color:var(--danger)">' + App.esc(t("settings.danger")) + "</h2></div>" +
         '<div class="card-body">' +
           '<button class="btn btn-danger-soft" id="logout-btn2">' + App.icon("logout", 16) + App.esc(t("settings.logoutAll")) + "</button>" +

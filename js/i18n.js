@@ -6,6 +6,8 @@ window.I18N = {
   fr: {
     "app.name": "Gestion de locations",
     "app.tagline": "Locations & caisse",
+    "theme.dark": "Mode sombre",
+    "theme.light": "Mode clair",
 
     "nav.dashboard": "Tableau de bord",
     "nav.apartments": "Appartements",
@@ -341,6 +343,8 @@ window.I18N = {
   ar: {
     "app.name": "إدارة الإيجارات",
     "app.tagline": "الإيجارات والصندوق",
+    "theme.dark": "الوضع الداكن",
+    "theme.light": "الوضع الفاتح",
 
     "nav.dashboard": "لوحة التحكم",
     "nav.apartments": "الشقق",
